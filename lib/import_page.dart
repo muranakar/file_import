@@ -21,6 +21,7 @@ class ImportPage extends StatelessWidget {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
     if (result != null && result.files.single.path != null) {
       final file = File(result.files.single.path!);
+      await DiaryDatabase.instance.deleteAllDiaries();
       await DiaryDatabase.instance.importFromTxt(file);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('テキストファイルからインポートしました')),
@@ -32,6 +33,7 @@ class ImportPage extends StatelessWidget {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
     if (result != null && result.files.single.path != null) {
       final file = File(result.files.single.path!);
+      await DiaryDatabase.instance.deleteAllDiaries();
       await DiaryDatabase.instance.importFromCsv(file);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('CSVファイルからインポートしました')),

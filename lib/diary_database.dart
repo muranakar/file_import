@@ -39,6 +39,31 @@ class DiaryDatabase {
     ''');
   }
 
+  Future<List<Diary>> getDiaries() async {
+    return await getDiariesByLatest();
+  }
+
+  Future<List<Diary>> getDiariesByLatest() async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'diaries',
+      orderBy: 'datetime(created_at) DESC',
+    );
+
+    if (maps.isEmpty) {
+      return [];
+    }
+
+    return List.generate(maps.length, (i) {
+      return Diary.fromMap(maps[i]);
+    });
+  }
+
+  Future<void> deleteAllDiaries() async {
+    final db = await instance.database;
+    await db.delete('diaries');
+  }
+
   String _formattedDate() {
     final now = DateTime.now();
     final formatter = DateFormat('yyyy-MM-dd-HH:mm');
@@ -94,8 +119,6 @@ class DiaryDatabase {
   }
 
   Future<String> exportDatabase() async {
-    final db = await database;
-
     try {
       if (_database != null && _database!.isOpen) {
         await _database!.close();
@@ -106,8 +129,7 @@ class DiaryDatabase {
       final dbFile = File(join(dbPath, 'diary.db'));
 
       final docDir = await getApplicationDocumentsDirectory();
-      final backupPath =
-          join(docDir.path, 'diary_backup_${_formattedDate()}.db');
+      final backupPath = join(docDir.path, 'db_backup_${_formattedDate()}.db');
 
       await dbFile.copy(backupPath);
       return backupPath;
@@ -129,26 +151,6 @@ class DiaryDatabase {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-  }
-
-  Future<List<Diary>> getDiaries() async {
-    return await getDiariesByLatest();
-  }
-
-  Future<List<Diary>> getDiariesByLatest() async {
-    final db = await instance.database;
-    final maps = await db.query(
-      'diaries',
-      orderBy: 'datetime(created_at) DESC',
-    );
-
-    if (maps.isEmpty) {
-      return [];
-    }
-
-    return List.generate(maps.length, (i) {
-      return Diary.fromMap(maps[i]);
-    });
   }
 
   // データベースファイルのインポート処理を行う関数
