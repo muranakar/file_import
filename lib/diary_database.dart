@@ -158,25 +158,51 @@ class DiaryDatabase {
     );
   }
 
-  // データベースファイルのインポート処理を行う関数
+  /// データベースファイルを直接インポートする関数
+  /// @param file インポートするデータベースファイル
+  /// @throws IOException ファイルの読み書きに失敗した場合
+  /// @throws DatabaseException データベースの操作に失敗した場合
   Future<void> importDatabase(File file) async {
+    // アプリケーションのデータベースディレクトリのパスを取得
     final dbPath = await getDatabasesPath();
+    // インポート先のデータベースファイルパスを生成
     final dbFile = File(join(dbPath, 'diary.db'));
 
+    // 既存のデータベースを新しいファイルで上書き
+    // 注意: この操作は既存のデータをすべて削除します
     await file.copy(dbFile.path);
+    // 新しいデータベース接続を初期化
     _database = await _initDB('diary.db');
   }
 
-  // テキストファイルからのインポート処理を行う関数
+  /// テキストファイルから日記データをインポートする関数
+  /// テキストファイルの形式:
+  /// タイトル: [タイトル]
+  /// 本文: [内容]
+  /// の形式で記述されている必要があります
+  /// @param file インポートするテキストファイル
+  /// @throws IOException ファイルの読み取りに失敗した場合
+  /// @throws DatabaseException データベースの挿入に失敗した場合
   Future<void> importFromTxt(File file) async {
+    // ファイルの内容を文字列として読み込み
     final content = await file.readAsString();
+    // 行単位で分割
     final lines = content.split('\n');
+    // データベース接続を取得
     final db = await instance.database;
 
+    // 各行を解析してデータベースに挿入
     for (var i = 0; i < lines.length; i++) {
+      // タイトル行を検出
       if (lines[i].startsWith('タイトル: ')) {
+        // タイトルと本文を抽出
+        // 「タイトル: 」の6文字分をスキップしてタイトルを取得
         final title = lines[i].substring(6);
+        // 次の行から「本文: 」の3文字分をスキップして本文を取得
         final content = lines[i + 1].substring(3);
+
+        // データベースに挿入
+        // 同じIDのデータが存在する場合は上書き
         await db.insert(
           'diaries',
           {'title': title, 'content': content},
@@ -186,21 +212,40 @@ class DiaryDatabase {
     }
   }
 
-  // CSVファイルからのインポート処理を行う関数
+  /// CSVファイルから日記データをインポートする関数
+  /// CSVの形式:
+  /// ID,タイトル,本文,作成日時
+  /// の形式である必要があります（ヘッダー行が必要）
+  /// @param file インポートするCSVファイル
+  /// @throws IOException ファイルの読み取りに失敗した場合
+  /// @throws FormatException CSVの形式が不正な場合
+  /// @throws DatabaseException データベースの挿入に失敗した場合
   Future<void> importFromCsv(File file) async {
+    // ファイルの内容を文字列として読み込み
     final content = await file.readAsString();
+    // 行単位で分割
     final lines = content.split('\n');
+    // データベース接続を取得
     final db = await instance.database;
 
+    // 各行を処理（1行目はヘッダーなのでスキップ）
     for (var i = 1; i < lines.length; i++) {
+      // カンマで分割してフィールドを取得
       final values = lines[i].split(',');
+      // 必要なフィールドがすべて存在することを確認
       if (values.length >= 4) {
-        final id = int.parse(values[0]);
-        final title = values[1].replaceAll('"', '');
-        final content = values[2].replaceAll('"', '');
+        // 各フィールドを適切な型に変換
+        final id = int.parse(values[0]); // IDを数値に変換
+        final title = values[1].replaceAll('"', ''); // ダブルクォートを除去
+        final content = values[2].replaceAll('"', ''); // ダブルクォートを除去
         final createdAt = values[3];
+
+        // デバッグ用のログ出力
         print(
             'id: $id, title: $title, content: $content, created_at: $createdAt');
+
+        // データベースに挿入
+        // 同じIDのデータが存在する場合は上書き
         await db.insert(
           'diaries',
           {
