@@ -3,13 +3,14 @@ import 'package:file_import/diary.dart';
 import 'package:flutter/material.dart';
 import 'package:share/share.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 追加
 import 'diary_database.dart';
 import 'import_page.dart'; // インポート画面を追加
 import 'home_page.dart'; // 追加
 
 // アプリケーションのエントリーポイント
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp())); // 変更
   _runExampleOnce(); // 変更
   // サンプルデータの作成
 }

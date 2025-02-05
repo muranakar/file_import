@@ -1,47 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'diary_database.dart';
 import 'diary.dart';
 
-class DiaryTab extends StatefulWidget {
+final diariesProvider = FutureProvider<List<Diary>>((ref) async {
+  final database = ref.watch(diaryDatabaseProvider);
+  return await database.getDiaries();
+});
+
+class DiaryTab extends ConsumerWidget {
   @override
-  _DiaryTabState createState() => _DiaryTabState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final diariesAsyncValue = ref.watch(diariesProvider);
 
-class _DiaryTabState extends State<DiaryTab> {
-  final ScrollController _scrollController = ScrollController();
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  List<Diary> _diaries = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDiaries();
-  }
-
-  Future<void> _loadDiaries() async {
-    final diaries = await DiaryDatabase.instance.getDiaries();
-    print(diaries);
-    setState(() {
-      _diaries = diaries.toList();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('日記'),
       ),
-      body: ListView.builder(
-        controller: _scrollController,
-        itemCount: _diaries.length,
-        itemBuilder: (context, index) {
-          final diary = _diaries[index];
-          return _buildDiaryItem(diary);
-        },
+      body: diariesAsyncValue.when(
+        data: (diaries) => ListView.builder(
+          itemCount: diaries.length,
+          itemBuilder: (context, index) {
+            final diary = diaries[index];
+            return _buildDiaryItem(diary);
+          },
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('エラーが発生しました: $error')),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDiaryDialog(context),
+        onPressed: () => _showAddDiaryDialog(context, ref),
         child: const Icon(Icons.add),
       ),
     );
@@ -54,7 +42,7 @@ class _DiaryTabState extends State<DiaryTab> {
     );
   }
 
-  void _showAddDiaryDialog(BuildContext context) {
+  void _showAddDiaryDialog(BuildContext context, WidgetRef ref) async {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
 
@@ -87,15 +75,10 @@ class _DiaryTabState extends State<DiaryTab> {
                 final content = contentController.text;
 
                 if (title.isNotEmpty && content.isNotEmpty) {
-                  await DiaryDatabase.instance.insertDiary(title, content);
-                  final diaries =
-                      await DiaryDatabase.instance.getDiariesByLatest();
-                  final newDiary = diaries[0];
-                  setState(() {
-                    _diaries.insert(0, newDiary);
-                  });
+                  final database = ref.read(diaryDatabaseProvider);
+                  await database.insertDiary(title, content);
+                  ref.refresh(diariesProvider);
                   Navigator.of(context).pop();
-                  _scrollToBottom();
                 }
               },
               child: const Text('追加'),
@@ -104,17 +87,5 @@ class _DiaryTabState extends State<DiaryTab> {
         );
       },
     );
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 }

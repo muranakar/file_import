@@ -4,6 +4,11 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'diary.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 追加
+
+final diaryDatabaseProvider = Provider<DiaryDatabase>((ref) {
+  return DiaryDatabase.instance;
+});
 
 class DiaryDatabase {
   static final DiaryDatabase instance = DiaryDatabase._init();
